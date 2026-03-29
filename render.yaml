@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: assessment-backend
+    env: python
+    plan: free
+    region: oregon
+    rootDir: Backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+  - type: background
+    name: assessment-worker
+    env: python
+    plan: free
+    region: oregon
+    rootDir: Backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.core.celery_app worker --loglevel=info --concurrency=1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
