@@ -11,6 +11,7 @@ class Document(Base):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
+    cloudinary_public_id = Column(String, nullable=True)  # Cloudinary public ID for regenerating signed URLs
     status = Column(String, nullable=False, default="queued")  # queued, processing, completed, failed
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     task_id = Column(String, nullable=True)

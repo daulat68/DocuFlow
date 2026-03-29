@@ -14,6 +14,7 @@ from app.database import get_db
 from app.models.document import Document
 from app.auth.dependencies import get_current_user
 from app.models.user import User
+from app.core.cloudinary_config import upload_to_cloudinary, delete_from_cloudinary
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -26,35 +27,43 @@ async def upload_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload a single document for processing"""
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    """Upload a single document for processing to Cloudinary"""
+    try:
+        # Read file content
+        file_content = await file.read()
+        
+        # Upload to Cloudinary
+        cloudinary_result = await upload_to_cloudinary(file_content, file.filename)
+        
+        # Store document metadata with Cloudinary URL
+        document = Document(
+            user_id=current_user.id,
+            filename=file.filename,
+            file_path=cloudinary_result["url"],  # Store Cloudinary URL instead of local path
+            cloudinary_public_id=cloudinary_result["public_id"],  # Store for regenerating signed URLs
+            file_size=cloudinary_result["size"],
+            file_type=cloudinary_result["type"],
+            status="queued"
+        )
 
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+        db.add(document)
+        db.commit()
+        db.refresh(document)
 
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+        # Queue processing task
+        task = process_document.delay(document.id)
+        document.task_id = task.id
+        db.commit()
 
-    document = Document(
-        user_id=current_user.id,
-        filename=file.filename,
-        file_path=file_path,
-        status="queued"
-    )
-
-    db.add(document)
-    db.commit()
-    db.refresh(document)
-
-    task = process_document.delay(document.id)
-    document.task_id = task.id
-    db.commit()
-
-    return {
-        "message": "Document uploaded",
-        "document_id": document.id,
-        "task_id": task.id,
-        "status": document.status
-    }
+        return {
+            "message": "Document uploaded to Cloudinary",
+            "document_id": document.id,
+            "task_id": task.id,
+            "status": document.status,
+            "file_url": cloudinary_result["url"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @router.post("/upload-multiple")
@@ -63,41 +72,52 @@ async def upload_multiple_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload multiple documents for batch processing"""
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    
+    """Upload multiple documents for batch processing to Cloudinary"""
     uploaded_docs = []
     
     for file in files:
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
-        
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-        
-        document = Document(
-            user_id=current_user.id,
-            filename=file.filename,
-            file_path=file_path,
-            status="queued"
-        )
-        
-        db.add(document)
-        db.commit()
-        db.refresh(document)
-        
-        task = process_document.delay(document.id)
-        document.task_id = task.id
-        db.commit()
-        
-        uploaded_docs.append({
-            "document_id": document.id,
-            "filename": document.filename,
-            "task_id": task.id,
-            "status": document.status
-        })
+        try:
+            # Read file content
+            file_content = await file.read()
+            
+            # Upload to Cloudinary
+            cloudinary_result = await upload_to_cloudinary(file_content, file.filename)
+            
+            # Store document metadata with Cloudinary URL
+            document = Document(
+                user_id=current_user.id,
+                filename=file.filename,
+                file_path=cloudinary_result["url"],  # Store Cloudinary URL
+                cloudinary_public_id=cloudinary_result["public_id"],  # Store for regenerating signed URLs
+                file_size=cloudinary_result["size"],
+                file_type=cloudinary_result["type"],
+                status="queued"
+            )
+            
+            db.add(document)
+            db.commit()
+            db.refresh(document)
+            
+            # Queue processing task
+            task = process_document.delay(document.id)
+            document.task_id = task.id
+            db.commit()
+            
+            uploaded_docs.append({
+                "document_id": document.id,
+                "filename": document.filename,
+                "task_id": task.id,
+                "status": document.status,
+                "file_url": cloudinary_result["url"]
+            })
+        except Exception as e:
+            uploaded_docs.append({
+                "filename": file.filename,
+                "error": str(e)
+            })
     
     return {
-        "message": f"Uploaded {len(uploaded_docs)} documents",
+        "message": f"Processed {len(uploaded_docs)} files",
         "documents": uploaded_docs
     }
 
