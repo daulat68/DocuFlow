@@ -139,177 +139,133 @@ const DocumentDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="detail-container">
-      <div className="detail-header">
+    <div className="detail">
+      
+      {/* Header */}
+      <div className="detail-top">
         <button onClick={() => navigate('/dashboard')} className="back-btn">
-          ← Back to Dashboard
+          ← Back
         </button>
-        <h1>{document.filename}</h1>
-        <span className={`status-badge status-${document.status}`}>
-          {document.status.toUpperCase()}
-        </span>
+
+        <div>
+          <h1>{document.filename}</h1>
+          <span className={`status ${document.status}`}>
+            {document.status}
+          </span>
+        </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && <div className="alert error">{error}</div>}
+      {success && <div className="alert success">{success}</div>}
 
-      <div className="detail-content">
-        {/* Document Info */}
-        <section className="info-section">
-          <h2>📋 Document Information</h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>Document ID:</label>
-              <span>{document.id}</span>
-            </div>
-            <div className="info-item">
-              <label>File Type:</label>
-              <span>{document.file_type || 'Unknown'}</span>
-            </div>
-            <div className="info-item">
-              <label>File Size:</label>
-              <span>
-                {document.file_size ? `${(document.file_size / 1024).toFixed(2)} KB` : 'N/A'}
-              </span>
-            </div>
-            <div className="info-item">
-              <label>Created:</label>
-              <span>{new Date(document.created_at).toLocaleString()}</span>
-            </div>
-            <div className="info-item">
-              <label>Updated:</label>
-              <span>{new Date(document.updated_at).toLocaleString()}</span>
-            </div>
-            {document.completed_at && (
-              <div className="info-item">
-                <label>Completed:</label>
-                <span>{new Date(document.completed_at).toLocaleString()}</span>
-              </div>
-            )}
+      <div className="detail-grid">
+
+        {/* LEFT SIDE */}
+        <div className="left-panel">
+
+          <div className="card">
+            <h3>Document Info</h3>
+            <p>ID: {document.id}</p>
+            <p>Type: {document.file_type || 'Unknown'}</p>
+            <p>
+              Size: {document.file_size
+                ? `${(document.file_size / 1024).toFixed(2)} KB`
+                : 'N/A'}
+            </p>
+            <p>Created: {new Date(document.created_at).toLocaleString()}</p>
           </div>
-        </section>
 
-        {/* Progress */}
-        {document.progress && document.status === 'processing' && (
-          <section className="progress-section">
-            <h2>⏳ Processing Progress</h2>
-            <div className="progress-container">
+          {document.progress && document.status === 'processing' && (
+            <div className="card">
+              <h3>Processing</h3>
               <div className="progress-bar">
                 <div
                   className="progress-fill"
                   style={{ width: `${document.progress.percentage}%` }}
-                ></div>
+                />
               </div>
-              <p className="progress-text">
-                {document.progress.message} ({document.progress.percentage}%)
-              </p>
+              <p>{document.progress.message}</p>
             </div>
-          </section>
-        )}
+          )}
 
-        {/* Error Message */}
-        {document.error_message && (
-          <section className="error-section">
-            <h2>❌ Error Details</h2>
-            <p className="error-text">{document.error_message}</p>
-            <button onClick={handleRetry} className="retry-action-btn">
-              🔄 Retry Processing
-            </button>
-          </section>
-        )}
-
-        {/* Processed Output */}
-        {document.processed_output && (
-          <section className="output-section">
-            <h2>🔍 Processed Output (Read-Only)</h2>
-            <div className="output-container">
-              <pre>{JSON.stringify(document.processed_output, null, 2)}</pre>
+          {document.error_message && (
+            <div className="card error">
+              <h3>Error</h3>
+              <p>{document.error_message}</p>
+              <button onClick={handleRetry}>Retry</button>
             </div>
-          </section>
-        )}
+          )}
 
-        {/* Review/Edit Section */}
-        {document.status !== 'finalized' && document.reviewed_result && (
-          <section className="review-section">
-            <div className="review-header">
-              <h2>✏️ Review & Edit</h2>
-              <div className="review-actions">
-                {!editing ? (
-                  <button onClick={handleEdit} className="edit-btn">
-                    ✏️ Edit
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={handleSaveEdit} className="save-btn">
-                      💾 Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditing(false);
-                        setEditedDataString('');
-                      }}
-                      className="cancel-btn"
-                    >
-                      ❌ Cancel
-                    </button>
-                  </>
-                )}
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="right-panel">
+
+          {(document.processed_output || editedData) && (
+            <div className="card">
+              <div className="card-header">
+                <h3>Document Data</h3>
+
+                <div className="header-actions">
+                  {!editing ? (
+                    <button onClick={handleEdit}>Edit</button>
+                  ) : (
+                    <>
+                      <button onClick={handleSaveEdit}>Save</button>
+                      <button onClick={() => setEditing(false)}>Cancel</button>
+                    </>
+                  )}
+                </div>
               </div>
+
+              {editing ? (
+                <textarea
+                  value={editedDataString}
+                  onChange={(e) => setEditedDataString(e.target.value)}
+                  className="editor"
+                />
+              ) : (
+                <pre className="code-block">
+                  {JSON.stringify(
+                    editedData || document.processed_output,
+                    null,
+                    2
+                  )}
+                </pre>
+              )}
+
+              {/* Actions */}
+              {!editing && document.status !== 'finalized' && (
+                <button onClick={handleFinalize} className="final-btn">
+                  Finalize
+                </button>
+              )}
             </div>
+          )}
 
-            {editing ? (
-              <textarea
-                value={editedDataString}
-                onChange={(e) => setEditedDataString(e.target.value)}
-                className="review-textarea"
-                rows={15}
-              />
-            ) : (
-              <div className="review-output">
-                <pre>{JSON.stringify(editedData, null, 2)}</pre>
-              </div>
-            )}
+          {document.final_result && (
+            <div className="card">
+              <h3>Final Result</h3>
+              <pre className="code-block">
+                {JSON.stringify(document.final_result, null, 2)}
+              </pre>
+            </div>
+          )}
 
-            {!editing && document.status !== 'finalized' && (
-              <button onClick={handleFinalize} className="finalize-btn">
-                🔒 Finalize & Lock
+          <div className="card">
+            <h3>Export</h3>
+            <div className="actions">
+              <button onClick={() => handleExport('json')}>
+                JSON
               </button>
-            )}
-          </section>
-        )}
-
-        {/* Final Result (if finalized) */}
-        {document.final_result && (
-          <section className="final-section">
-            <h2>🔒 Finalized Result (Locked)</h2>
-            <div className="final-output">
-              <pre>{JSON.stringify(document.final_result, null, 2)}</pre>
-            </div>
-          </section>
-        )}
-
-        {/* Export Actions */}
-        {(document.processed_output || document.reviewed_result || document.final_result) && (
-          <section className="export-section">
-            <h2>📥 Export Results</h2>
-            <div className="export-buttons">
-              <button
-                onClick={() => handleExport('json')}
-                disabled={exporting !== null}
-                className="export-btn json-btn"
-              >
-                {exporting === 'json' ? 'Exporting JSON...' : '📄 Export as JSON'}
-              </button>
-              <button
-                onClick={() => handleExport('csv')}
-                disabled={exporting !== null}
-                className="export-btn csv-btn"
-              >
-                {exporting === 'csv' ? 'Exporting CSV...' : '📊 Export as CSV'}
+              <button onClick={() => handleExport('csv')}>
+                CSV
               </button>
             </div>
-          </section>
-        )}
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

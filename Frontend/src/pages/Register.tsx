@@ -11,6 +11,7 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +28,7 @@ const Register: React.FC = () => {
 
     try {
       await authAPI.register({ name, email, password });
-      setSuccess('Registration successful! Redirecting to login...');
+      setSuccess('Account created successfully! Redirecting...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.');
@@ -38,61 +39,65 @@ const Register: React.FC = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-box">
-        <h1>Register</h1>
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+      <div className="auth-card">
+        <h1 className="auth-title">Create account</h1>
+        <p className="auth-subtitle">Start using DocuFlow</p>
+
+        {error && <div className="auth-error">{error}</div>}
+        {success && <div className="auth-success">{success}</div>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="input-group">
+            <label>Full Name</label>
             <input
-              id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Enter your full name"
+              placeholder="John Doe"
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+
+          <div className="input-group">
+            <label>Email</label>
             <input
-              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
+              placeholder="you@example.com"
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+
+          <div className="input-group">
+            <label>Password</label>
             <input
-              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
+              placeholder="••••••••"
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+
+          <div className="input-group">
+            <label>Confirm Password</label>
             <input
-              id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              placeholder="Confirm your password"
+              placeholder="••••••••"
             />
           </div>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+
+          <button className="auth-btn" type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-        <p className="auth-link">
-          Already have an account? <Link to="/login">Login here</Link>
+
+        <p className="auth-footer">
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </div>
     </div>

@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useMemo,
+} from 'react';
 
 interface AuthContextType {
   token: string | null;
@@ -14,13 +21,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore token from localStorage on app startup
+  // Restore token on app load
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken');
     if (storedToken) {
       setToken(storedToken);
     }
     setIsLoading(false);
+  }, []);
+
+  // 🔥 Sync logout/login across tabs
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedToken = localStorage.getItem('accessToken');
+      setToken(storedToken);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = (newToken: string) => {
@@ -33,11 +51,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('accessToken');
   };
 
-  return (
-    <AuthContext.Provider value={{ token, isAuthenticated: !!token, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+  // Memoize context value (optimization)
+  const value = useMemo(
+    () => ({
+      token,
+      isAuthenticated: !!token,
+      isLoading,
+      login,
+      logout,
+    }),
+    [token, isLoading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

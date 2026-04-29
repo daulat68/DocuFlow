@@ -9,6 +9,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -27,41 +28,77 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+  const handleDemoLogin = async () => {
+    setError('');
+    setLoading(true);
+
+    const demoEmail = 'demouser123@gmail.com';
+    const demoPassword = 'Demo@123';
+
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+
+    try {
+      const response = await authAPI.login({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      login(response.access_token);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError('Demo login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="auth-container">
-      <div className="auth-box">
-        <h1>Login</h1>
-        {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+      <div className="auth-card">
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="auth-subtitle">Login to your DocuFlow account</p>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="input-group">
+            <label>Email</label>
             <input
-              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
+              placeholder="you@example.com"
             />
           </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+
+          <div className="input-group">
+            <label>Password</label>
             <input
-              id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
+              placeholder="••••••••"
             />
           </div>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+
+          <button className="auth-btn" type="submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+          <button
+            type="button"
+            className="demo-btn"
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Use Demo Account
           </button>
         </form>
-        <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
+
+        <p className="auth-footer">
+          Don’t have an account? <Link to="/register">Create one</Link>
         </p>
       </div>
     </div>

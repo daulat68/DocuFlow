@@ -1,20 +1,32 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import DocumentDetail from './pages/DocumentDetail';
+
 import './styles/App.css';
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <AuthProvider>
+    <AuthProvider>
+      <Router>
         <Routes>
+
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
@@ -23,6 +35,7 @@ const App: React.FC = () => {
               </PrivateRoute>
             }
           />
+
           <Route
             path="/document/:docId"
             element={
@@ -31,10 +44,16 @@ const App: React.FC = () => {
               </PrivateRoute>
             }
           />
+
+          {/* Default Route */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* 404 fallback */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
         </Routes>
-      </AuthProvider>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 };
 

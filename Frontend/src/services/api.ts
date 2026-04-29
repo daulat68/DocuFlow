@@ -12,9 +12,12 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 10000, // ⏱ prevents hanging requests
 });
 
-// Add token to requests
+/* -------------------- Interceptors -------------------- */
+
+// Attach token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -23,51 +26,62 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Global error handling
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('accessToken');
+      window.location.href = '/login'; // auto logout
+    }
+    return Promise.reject(err);
+  }
+);
+
+/* -------------------- Helper -------------------- */
+
+const downloadFile = (data: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+/* -------------------- Auth API -------------------- */
+
 export const authAPI = {
-  register: async (data: RegisterRequest): Promise<{ message: string }> => {
-    const response = await api.post<{ message: string }>('/auth/register', data);
-    return response.data;
+  register: async (data: RegisterRequest) => {
+    const res = await api.post('/auth/register', data);
+    return res.data;
   },
 
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    return response.data;
+    const res = await api.post('/auth/login', data);
+    return res.data;
   },
 };
+
+/* -------------------- Document API -------------------- */
 
 export const documentAPI = {
   uploadDocument: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post<UploadResponse>(
-      '/documents/upload',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return response.data;
+    const res = await api.post('/documents/upload', formData);
+    return res.data;
   },
 
-  uploadMultipleDocuments: async (files: File[]): Promise<any> => {
+  uploadMultipleDocuments: async (files: File[]) => {
     const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
+    files.forEach((file) => formData.append('files', file));
 
-    const response = await api.post<any>(
-      '/documents/upload-multiple',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return response.data;
+    const res = await api.post('/documents/upload-multiple', formData);
+    return res.data;
   },
 
   listDocuments: async (
@@ -82,82 +96,43 @@ export const documentAPI = {
     if (sortBy) params.append('sort_by', sortBy);
     if (sortOrder) params.append('sort_order', sortOrder);
 
-    const response = await api.get<Document[]>('/documents/', { params });
-    return response.data;
+    const res = await api.get('/documents/', { params });
+    return res.data;
   },
 
   getDocumentDetails: async (docId: number): Promise<DocumentDetail> => {
-    const response = await api.get<DocumentDetail>(`/documents/${docId}`);
-    return response.data;
+    const res = await api.get(`/documents/${docId}`);
+    return res.data;
   },
 
-  getDocumentProgress: async (docId: number): Promise<any> => {
-    const response = await api.get<any>(`/documents/${docId}/progress`);
-    return response.data;
+  updateReviewedResult: async (docId: number, data: any) => {
+    const res = await api.put(`/documents/${docId}/reviewed`, data);
+    return res.data;
   },
 
-  updateReviewedResult: async (docId: number, data: any): Promise<any> => {
-    const response = await api.put<any>(
-      `/documents/${docId}/reviewed`,
-      data
-    );
-    return response.data;
+  finalizeDocument: async (docId: number) => {
+    const res = await api.post(`/documents/${docId}/finalize`);
+    return res.data;
   },
 
-  finalizeDocument: async (docId: number): Promise<any> => {
-    const response = await api.post<any>(
-      `/documents/${docId}/finalize`
-    );
-    return response.data;
+  retryDocument: async (docId: number) => {
+    const res = await api.post(`/documents/${docId}/retry`);
+    return res.data;
   },
 
-  retryDocument: async (docId: number): Promise<any> => {
-    const response = await api.post<any>(
-      `/documents/${docId}/retry`
-    );
-    return response.data;
+  exportDocumentJson: async (docId: number) => {
+    const res = await api.get(`/documents/${docId}/export-json`, {
+      responseType: 'blob',
+    });
+    downloadFile(res.data, `document_${docId}.json`);
   },
 
-  exportDocumentJson: async (docId: number, useFinal: boolean = true): Promise<void> => {
-    const response = await api.get(
-      `/documents/${docId}/export-json`,
-      {
-        params: { use_final: useFinal },
-        responseType: 'blob'
-      }
-    );
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `document_${docId}.json`);
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode?.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  },
-
-  exportDocumentCsv: async (docId: number, useFinal: boolean = true): Promise<void> => {
-    const response = await api.get(
-      `/documents/${docId}/export-csv`,
-      {
-        params: { use_final: useFinal },
-        responseType: 'blob'
-      }
-    );
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `document_${docId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode?.removeChild(link);
-    window.URL.revokeObjectURL(url);
+  exportDocumentCsv: async (docId: number) => {
+    const res = await api.get(`/documents/${docId}/export-csv`, {
+      responseType: 'blob',
+    });
+    downloadFile(res.data, `document_${docId}.csv`);
   },
 };
 
 export default api;
-
