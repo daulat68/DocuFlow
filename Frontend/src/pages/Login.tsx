@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,8 +10,34 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [isBackendReady, setIsBackendReady] = useState(false);
+
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  useEffect(() => {
+    checkBackend();
+  }, []);
+
+  const checkBackend = async () => {
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/`
+      );
+
+      if (res.ok) {
+        setIsBackendReady(true);
+      } else {
+        retry();
+      }
+    } catch {
+      retry();
+    }
+  };
+
+  const retry = () => {
+    setTimeout(checkBackend, 3000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,12 +54,13 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleDemoLogin = async () => {
     setError('');
     setLoading(true);
 
     const demoEmail = 'demouser123@gmail.com';
-    const demoPassword = 'Demo@123';
+    const demoPassword = 'Demo@User128789';
 
     setEmail(demoEmail);
     setPassword(demoPassword);
@@ -52,6 +79,17 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (!isBackendReady) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <h2>Starting backend service...</h2>
+          <p>This may take ~20–30 seconds (free-tier hosting)</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-container">
@@ -84,14 +122,19 @@ const Login: React.FC = () => {
             />
           </div>
 
-          <button className="auth-btn" type="submit" disabled={loading}>
+          <button
+            className="auth-btn"
+            type="submit"
+            disabled={loading || !isBackendReady}
+          >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
+
           <button
             type="button"
             className="demo-btn"
             onClick={handleDemoLogin}
-            disabled={loading}
+            disabled={loading || !isBackendReady}
           >
             Use Demo Account
           </button>
